@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Todo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    :root {
+      --bg: #1e1e2f;
+      --card: #2d2d44;
+      --primary: #7c3aed;
+      --primary-light: #a78bfa;
+      --text: #f1f5f9;
+      --subtle: #94a3b8;
+      --danger: #ef4444;
+      --success: #10b981;
+      --radius: 10px;
+      --shadow: 0 4px 14px rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Segoe UI", Roboto, sans-serif; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 3rem 1rem;
+    }
+    .container {
+      width: 100%;
+      max-width: 520px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 2rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    form {
+      display: flex;
+      gap: .5rem;
+      margin-bottom: 1.5rem;
+    }
+    input {
+      flex: 1;
+      padding: .75rem 1rem;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--card);
+      color: var(--text);
+      font-size: 1rem;
+    }
+    input::placeholder { color: var(--subtle); }
+    button {
+      padding: .75rem 1.25rem;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    button:hover { background: var(--primary-light); }
+    ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+    }
+    li {
+      background: var(--card);
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    li.complete { opacity: .55; }
+    li.complete .title { text-decoration: line-through; color: var(--subtle); }
+    .title { flex: 1; font-size: 1.05rem; }
+    .due {
+      font-size: .8rem;
+      color: var(--subtle);
+      margin-left: .5rem;
+    }
+    .actions {
+      display: flex;
+      gap: .5rem;
+    }
+    .actions button {
+      padding: .4rem .8rem;
+      font-size: .8rem;
+      border-radius: 6px;
+    }
+    .done { background: var(--success); }
+    .undone { background: var(--subtle); }
+    .del { background: var(--danger); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>My Tasks</h1>
+
+    <form id="addForm">
+      <input id="title" placeholder="New task..." required>
+      <input id="due" type="date">
+      <button>Add</button>
+    </form>
+
+    <ul id="taskList"></ul>
+  </div>
+
+<script>
+const API = "http://localhost:5000/tasks";
+
+async function loadTasks() {
+  const res = await fetch(API);
+  const tasks = await res.json();
+  const list = document.getElementById("taskList");
+  list.innerHTML = "";
+  tasks.forEach(t => {
+    const li = document.createElement("li");
+    li.className = t.status === "complete" ? "complete" : "";
+    li.innerHTML = `
+      <div>
+        <span class="title">${t.title}<span class="due">${t.due_date ? " &bull; " + t.due_date : ""}</span></span>
+      </div>
+      <div class="actions">
+        <button class="${t.status === "complete" ? "undone" : "done"}" onclick="toggleDone(${t.id}, '${t.status}')">
+          ${t.status === "complete" ? "Undo" : "Done"}
+        </button>
+        <button class="del" onclick="deleteTask(${t.id})">Delete</button>
+      </div>
+    `;
+    list.appendChild(li);
+  });
+}
+
+document.getElementById("addForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  await fetch(API, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      title: document.getElementById("title").value,
+      due_date: document.getElementById("due").value
+    })
+  });
+  e.target.reset();
+  loadTasks();
+});
+
+async function toggleDone(id, currentStatus) {
+  const newStatus = currentStatus === "complete" ? "pending" : "complete";
+  await fetch(`${API}/${id}`, {
+    method: "PUT",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({status: newStatus})
+  });
+  loadTasks();
+}
+
+async function deleteTask(id) {
+  await fetch(`${API}/${id}`, {method:"DELETE"});
+  loadTasks();
+}
+
+loadTasks();
+</script>
+</body>
+</html>
